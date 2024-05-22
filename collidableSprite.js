@@ -8,7 +8,6 @@ export class collidableSprite extends PIXI.Sprite {
         this.y = y
         let options = {}
 
-
         this.rigidBody = Matter.Bodies.rectangle(x, y, width, height, options) //x,y,w,h
         if (isStatic) {
             this.rigidBody.isStatic = true;
@@ -21,23 +20,13 @@ export class collidableSprite extends PIXI.Sprite {
     update() {
         this.position.set(this.rigidBody.position.x, this.rigidBody.position.y)
 
-        this.rotation = this.rigidBody.angle
-        if (this.noRotate) {
+        if (!this.noRotate) {
+            this.rotation = this.rigidBody.angle
+        } else {
             Matter.Body.setAngularVelocity(this.rigidBody, 0)
         }
     }
 
-    resetPosition() {
-        Matter.Body.setPosition(this.rigidBody, {
-            x: 100,
-            y: 30
-        })
-        Matter.Body.setVelocity(this.rigidBody, {
-            x: 0,
-            y: 10
-        })
-        // Matter.Body.setAngularVelocity(this.rigidBody, 0)
-    }
 
     beforeUnload() {
 

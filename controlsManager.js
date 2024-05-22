@@ -1,16 +1,17 @@
+import config from "./config.js";
+
 export function controlsManager(player, dt) {
-    const acceleration = 0.9; // Adjust this value as needed
-    const velocity = player.rigidBody.velocity;
+    if (!player) return;
+    const acceleration = config.movementAcceleration
+    const vel = player.rigidBody.velocity;
     if (player.isMovingLeft) {
-        Matter.Body.setVelocity(player.rigidBody, {
-            x: velocity.x - acceleration * dt,
-            y: velocity.y
-        });
+        // console.log("left", vel.x)
+        vel.x -= acceleration * dt;
+    } else if (player.isMovingRight) {
+        // console.log("right", vel.x)
+        vel.x += acceleration * dt;
     }
-    if (player.isMovingRight) {
-        Matter.Body.setVelocity(player.rigidBody, {
-            x: velocity.x + acceleration * dt,
-            y: velocity.y
-        });
-    }
+    player.limitMaxSpeed()
+    //console.log(player.rigidBody.speed, player.rigidBody.position.x)
+    Matter.Body.setVelocity(player.rigidBody, vel);
 }

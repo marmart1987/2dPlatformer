@@ -1,88 +1,118 @@
 import {
     collidableSprite
 } from "./collidableSprite.js";
-import {
-    controlsManager
-} from "./controlsManager.js";
+import config from "./config.js";
 
+/**
+ * Checks if the player is colliding with the bottom of any object in the physics world.
+ * @param {Matter.Body} playerObject - The player's rigid body.
+ * @param {Matter.Engine} engine - The physics engine.
+ * @returns {boolean} True if the player is colliding with the bottom of any object, false otherwise.
+ */
 function isBottomColliding(playerObject, engine) {
-    // Assuming 'engine.world' is your composite containing all bodies
+    /**
+     * Iterate over all objects in the physics world, excluding the player.
+     * If the player is colliding with the bottom of any object, return true.
+     */
     const allObjects = Matter.Composite.allBodies(engine.world);
-    for (const object of allObjects) {
+    return allObjects.some(object => {
         if (object !== playerObject) {
+            /**
+             * Get the collision information between the player and the current object.
+             */
             const collisionInfo = Matter.Collision.collides(playerObject, object);
             if (!collisionInfo) {
-                continue
+                return false
             }
 
-            console.log(playerObject.position.x, object.bounds.min.x, object.bounds.max.x)
-            if (collisionInfo.collided && playerObject.bounds.max.y < object.bounds.max.y) {
-                if (playerObject.position.x > object.bounds.min.x && playerObject.position.x < object.bounds.max.x) {
-                    console.log(playerObject.x, object.bounds.min.x, object.bounds.max.x)
-                    return true; // Player is standing on this object
-                }
+            /**
+             * Check if the player is colliding with the bottom of the current object.
+             * The player is colliding with the bottom if the player's y position is less
+             * than the object's maximum y position, and the player's x position is
+             * within the object's x range.
+             */
+            if (collisionInfo.collided && playerObject.bounds.max.y < object.bounds.max.y &&
+                playerObject.position.x > object.bounds.min.x &&
+                playerObject.position.x < object.bounds.max.x) {
+                return true; // Player is standing on this object
             }
-
         }
-    }
-    // No collision detected
-    return false;
+    });
 }
 
+
 export class player extends collidableSprite {
+    /**
+     * The player class. Extends the CollidableSprite class.
+     * @class
+     * @param {PIXI.Texture} playerTexture - The texture used for the player sprite
+     * @param {number} size - The size of the player sprite
+     * @param {Matter.Engine} engine - The physics engine
+     */
     constructor(playerTexture, size, engine) {
-        super(playerTexture, size, size * 2, 100, 100, false, true)
+        super(playerTexture, size, size * 2, 200, 100, false, true)
         this.engine = engine
+        this.isMovingLeft = false
+        this.isMovingRight = false
+        /**
+         * Set the player's initial inertia to 1.5. This value determines how
+         * much an object resists changes in its velocity.
+         */
         Matter.Body.setInertia(this.rigidBody, 1.5)
+        /**
+         * Add event listeners for key down and key up events. These events are
+         * handled in the keydownHandler and keyupHandler functions.
+         */
         window.addEventListener('keydown', (event) => this.keydownHandler(event));
         window.addEventListener('keyup', (event) => this.keyupHandler(event));
+        /**
+         * The timestamp of the last time the player controller was updated.
+         */
         this.lastControllerUpdate = Date.now()
+        /**
+         * The physical properties of the player. 
+         */
         this.rigidBody.density = 0.001,
-            this.rigidBody.friction = 0.7,
-            this.rigidBody.frictionStatic = 0,
-            this.rigidBody.frictionAir = 0.02,
-            this.rigidBody.restitution = 0.5,
-            this.update = function () {
-                this.position.set(this.rigidBody.position.x, this.rigidBody.position.y)
-                this.rotation = this.rigidBody.angle
-                if (this.noRotate) {
-                    Matter.Body.setAngularVelocity(this.rigidBody, 0)
-                }
-            }
-
-        const limitMaxSpeed = () => {
-            let maxSpeedX = 4;
-            let maxSpeedY = 13;
-            if (this.rigidBody.velocity.x > maxSpeedX) {
-                Matter.Body.setVelocity(this.rigidBody, {
-                    x: maxSpeedX,
-                    y: this.rigidBody.velocity.y
-                });
-            }
-
-            if (this.rigidBody.velocity.x < -maxSpeedX) {
-                Matter.Body.setVelocity(this.rigidBody, {
-                    x: -maxSpeedX,
-                    y: this.rigidBody.velocity.y
-                });
-            }
-
-            if (this.rigidBody.velocity.y > maxSpeedY) {
-                Matter.Body.setVelocity(this.rigidBody, {
-                    x: this.rigidBody.velocity.x,
-                    y: maxSpeedY
-                });
-            }
-
-            if (this.rigidBody.velocity.y < -maxSpeedY) {
-                Matter.Body.setVelocity(this.rigidBody, {
-                    x: -this.rigidBody.velocity.x,
-                    y: -maxSpeedY
-                });
-            }
-        }
-        Matter.Events.on(engine, 'beforeUpdate', limitMaxSpeed);
+            this.rigidBody.friction = 0.01,
+            this.rigidBody.frictionStatic = 0.0,
+            this.rigidBody.frictionAir = 0.01,
+            this.rigidBody.restitution = 0.1,
+            this.rigidBody.slop = 0.01
     }
+
+    /**
+     * Limits the player's velocity to the maximum speed values set in the config.
+     */
+    limitMaxSpeed() {
+        const {
+            velocity: {
+                x,
+                y
+            }
+        } = this.rigidBody;
+        const {
+            maxXSpeed,
+            maxYSpeed
+        } = config;
+
+        // If the player's x velocity is greater than the maximum x speed, set it to the maximum x speed.
+        // If the player's x velocity is less than the negative maximum x speed, set it to the negative maximum x speed.
+        // Otherwise, leave the x velocity unchanged.
+        const newX = x > maxXSpeed ? maxXSpeed : (x < -maxXSpeed ? -maxXSpeed : x);
+
+        // Repeat the same process for the y velocity.
+        const newY = y > maxYSpeed ? maxYSpeed : (y < -maxYSpeed ? -maxYSpeed : y);
+
+        // Set the player's velocity to the new, limited values.
+        Matter.Body.setVelocity(this.rigidBody, {
+            x: newX,
+            y: newY
+        });
+    }
+
+
+
+
     keyMap = {
         Space: 'jump',
         KeyW: 'jump',
@@ -91,7 +121,22 @@ export class player extends collidableSprite {
         ArrowLeft: 'left',
         KeyD: 'right',
         ArrowRight: 'right',
+        ShiftLeft: "dash",
+        ShiftRight: "dash"
     }
+    jump() {
+        const velocity = this.rigidBody.velocity
+        if (isBottomColliding(this.rigidBody, this.engine)) {
+            Matter.Body.setVelocity(this.rigidBody, {
+                x: velocity.x,
+                y: velocity.y - config.jumpHeight
+            })
+        }
+    }
+    /**
+     * Handles key down events
+     * @param {KeyboardEvent} event - The key down event
+     */
     keydownHandler(event) {
         const key = this.keyMap[event.code]
         const velocity = this.rigidBody.velocity
@@ -100,44 +145,43 @@ export class player extends collidableSprite {
                 if (isBottomColliding(this.rigidBody, this.engine)) {
                     Matter.Body.setVelocity(this.rigidBody, {
                         x: velocity.x,
-                        y: velocity.y - 13
+                        y: velocity.y - config.jumpHeight
                     })
-                    console.log("jump")
                 }
                 break
             case "left":
-
                 this.isMovingLeft = true
-                // console.log("left", [this.isMovingLeft, this.isMovingRight])
                 break
             case "right":
-
                 this.isMovingRight = true
-                // console.log("right", [this.isMovingLeft, this.isMovingRight])
+                break
+            case "dash":
+                Matter.Body.setSpeed(this.rigidBody, this.rigidBody.speed + 20)
                 break
         }
-        if (this.isMovingLeft || this.isMovingRight) {
-            this.interval = setInterval((dt) => {
-                controlsManager(this, dt)
-                this.lastControllerUpdate = Date.now()
-            }, 10, Date.now() - this.lastControllerUpdate)
-        }
-    }
-    keyupHandler(event) {
-        const key = this.keyMap[event.code]
 
+    }
+
+    /**
+     * Handles key up events
+     * @param {KeyboardEvent} event - The key up event
+     */
+    keyupHandler(event) {
+        /**
+         * Get the key from the event
+         */
+        const key = this.keyMap[event.code]
         switch (key) {
             case "left":
                 this.isMovingLeft = false
-                clearInterval(this.interval)
                 break;
 
             case "right":
                 this.isMovingRight = false
-                clearInterval(this.interval)
                 break
         }
 
 
     }
+
 }

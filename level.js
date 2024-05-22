@@ -5,25 +5,24 @@ class PRNG {
     c;
     state;
     constructor(seed) {
-        // LCG using GCC's constants
         this.m = 0x80000000; // 2**31;
         this.a = 1103515245;
         this.c = 12345;
-        this.state = seed ? seed : Math.floor(Math.random() * (this.m - 1));
+        this.state = seed !== undefined ? seed : Math.floor(Math.random() * (this.m - 1));
     }
     nextInt() {
         this.state = (this.a * this.state + this.c) % this.m;
         return this.state;
     }
     nextFloat() {
-        // returns in range [0,1]
+        // returns in range [0, 1)
         return this.nextInt() / (this.m - 1);
     }
     nextRange(start, end) {
         // returns in range [start, end): including start, excluding end
         // can't modulu nextInt because of weak randomness in lower bits
-        var rangeSize = end - start;
-        var randomUnder1 = this.nextInt() / this.m;
+        const rangeSize = end - start;
+        const randomUnder1 = this.nextInt() / this.m;
         return start + Math.floor(randomUnder1 * rangeSize);
     }
     choice(array) {
@@ -91,7 +90,7 @@ class map {
         this.prng = prng;
         this.placeableBlockTypes = map.compilePlaceableBlockTypes();
         //@ts-ignore
-        this.map = map.combineChunks(new twoDArray([1, 103], new block("baseplate")), chunk(), chunk(), chunk(), chunk(), chunk(), chunk(), chunk(), chunk());
+        this.map = map.combineChunks(chunk(), chunk(), chunk(), chunk(), chunk(), chunk(), chunk(), chunk());
         return this.map;
     }
     static compilePlaceableBlockTypes() {
@@ -198,7 +197,6 @@ class level {
             }
             manifest.bundles.push();
         });
-        console.log(createdBundles);
         return manifest;
     }
 }
